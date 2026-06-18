@@ -4,6 +4,8 @@
 
 CodeSprite is a lightweight VS Code extension that adds three AI coding features without locking you into a specific provider. Point it at any OpenAI-compatible chat completions endpoint, supply your own API key, and pick any model your provider supports.
 
+![Demo](demo1.gif)
+
 - **Inline completions** — ghost-text suggestions appear as you type, in any language.
 - **AI Command modal** — trigger a natural-language instruction (`Ctrl+Shift+I`) and insert or replace code at the cursor.
 - **Commit message generator** — one click in the Source Control panel turns your staged diff into a Conventional Commit message.

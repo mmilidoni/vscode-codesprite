@@ -2,7 +2,7 @@
   "name": "codesprite",
   "displayName": "CodeSprite",
   "description": "CodeSprite: AI ghost text for VS Code. Inline completions, AI commands & commit messages — BYOK, open-source.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "icon": "icon.png",
   "publisher": "mmilidoni",
   "uuid": "8fdbd3f5-0451-4dbf-a273-cd3045c153c0",
