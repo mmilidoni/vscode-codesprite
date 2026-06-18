@@ -1,0 +1,110 @@
+/**
+ * Data collected from the editor before making an API request.
+ */
+export interface PromptContext {
+  /** Code before the cursor position */
+  prefix: string;
+  /** Code after the cursor position */
+  suffix: string;
+  /** VS Code language identifier (e.g. "python", "typescript") */
+  languageId: string;
+  /** Estimated token count of the full prompt (prefix + suffix) */
+  estimatedTokens: number;
+}
+
+/**
+ * Shared API credentials and configuration fields
+ * common to all completion request types.
+ */
+export interface ApiCredentials {
+  /** API key for authentication */
+  apiKey: string;
+  /** Base URL for the API endpoint */
+  apiBaseUrl: string;
+  /** Model identifier to use */
+  model: string;
+  /** Stop reading stream immediately when completion is done */
+  streamEarlyStop: boolean;
+}
+
+/**
+ * Parameters for the API client call.
+ */
+export interface CompletionRequest extends ApiCredentials {
+  /** Code before the cursor */
+  prefix: string;
+  /** Code after the cursor */
+  suffix: string;
+  /** VS Code language identifier */
+  languageId: string;
+  /** Maximum tokens to generate */
+  maxTokens: number;
+  /** Maximum tokens allowed for the input (prompt) side */
+  maxInputTokens: number;
+}
+
+/**
+ * Successful API response after parsing.
+ */
+export interface CompletionResponse {
+  /** The raw text to insert at the cursor */
+  text: string;
+  /** Why the model stopped generating (e.g. "stop", "length") */
+  finishReason: string;
+}
+
+/**
+ * Parameters for an instruction-based API call (AI Command modal).
+ * The user provides a natural-language instruction and the model
+ * returns source code to insert at the cursor.
+ */
+export interface InstructionRequest extends ApiCredentials {
+  /** The user's natural-language instruction (e.g. "create a variable called abc") */
+  instruction: string;
+  /** Text currently selected in the editor, if any. Empty string when no selection. */
+  selectedText: string;
+  /** Code before the cursor (or before the selection start) */
+  prefix: string;
+  /** Code after the cursor (or after the selection end) */
+  suffix: string;
+  /** VS Code language identifier */
+  languageId: string;
+  /** Maximum tokens to generate */
+  maxTokens: number;
+  /** Maximum tokens allowed for the input (prompt) side */
+  maxInputTokens: number;
+}
+
+/**
+ * Parameters for a commit message generation request.
+ * Sends a git diff to the model and receives a commit message.
+ */
+export interface CommitMessageRequest extends ApiCredentials {
+  /** The git diff (staged or unstaged) to generate a message from */
+  diff: string;
+  /** Maximum tokens to generate */
+  maxTokens: number;
+}
+
+/**
+ * Typed representation of all extension settings.
+ */
+export interface ExtensionConfig {
+  /** Global on/off toggle (master switch) */
+  enabled: boolean;
+  /** Whether inline autocomplete suggestions are active */
+  inlineEnabled: boolean;
+  /** Whether the AI Command modal (Ctrl+Shift+I) is active */
+  commandEnabled: boolean;
+  /** Whether the commit message generator is active */
+  commitMessageEnabled: boolean;
+  apiKey: string;
+  apiBaseUrl: string;
+  model: string;
+  enabledLanguages: string[];
+  debounceDelay: number;
+  maxContextLines: number;
+  maxCompletionTokens: number;
+  maxInputTokens: number;
+  streamEarlyStop: boolean;
+}

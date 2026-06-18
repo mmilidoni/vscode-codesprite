@@ -1,0 +1,11 @@
+.vscode/**
+.vscode-test/**
+src/**
+node_modules/**
+package-lock.json
+tsconfig.json
+esbuild.config.mjs
+.gitignore
+PLAN.md
+**/*.map
+dist/extension-debug.js

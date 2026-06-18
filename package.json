@@ -1,0 +1,177 @@
+{
+  "name": "codesprite",
+  "displayName": "CodeSprite",
+  "description": "CodeSprite: AI ghost text for VS Code. Inline completions, AI commands & commit messages — BYOK, open-source.",
+  "version": "0.1.0",
+  "icon": "icon.png",
+  "publisher": "mmilidoni",
+  "uuid": "8fdbd3f5-0451-4dbf-a273-cd3045c153c0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mmilidoni/vscode-codesprite"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Machine Learning"
+  ],
+  "keywords": [
+    "ai",
+    "autocomplete",
+    "inline",
+    "copilot",
+    "opencode",
+    "codesprite",
+    "ghost-text"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "CodeSprite",
+      "properties": {
+        "codesprite.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Globally enable or disable all AI features.",
+          "order": 1
+        },
+        "codesprite.inlineEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable inline autocomplete suggestions (ghost text while typing).",
+          "order": 2
+        },
+        "codesprite.commandEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable the AI Command modal (Ctrl+Shift+I).",
+          "order": 3
+        },
+        "codesprite.commitMessageEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable the AI commit message generator in Source Control.",
+          "order": 4
+        },
+        "codesprite.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for the OpenCode service. Keep this value secret.",
+          "order": 5
+        },
+        "codesprite.apiBaseUrl": {
+          "type": "string",
+          "default": "https://opencode.ai/zen/v1",
+          "description": "Base URL for the OpenCode (OpenAI-compatible) chat completions endpoint.",
+          "order": 6
+        },
+        "codesprite.model": {
+          "type": "string",
+          "default": "minimax-m2.7",
+          "description": "Model identifier to use for completions (e.g. 'gpt-4o-mini', 'gpt-4o', 'claude-3.5-sonnet'). Enter any model ID your API provider supports.",
+          "order": 7
+        },
+        "codesprite.maxCompletionTokens": {
+          "type": "number",
+          "default": 3072,
+          "minimum": 16,
+          "maximum": 4096,
+          "description": "Maximum number of tokens the model should generate per request. Increase this if you frequently get empty responses with finishReason='length'.",
+          "order": 8
+        },
+        "codesprite.maxInputTokens": {
+          "type": "number",
+          "default": 3072,
+          "minimum": 256,
+          "maximum": 32768,
+          "description": "Maximum number of tokens allowed for the prompt (prefix + suffix + system message). Context lines are automatically trimmed to fit this budget, leaving room for the completion.",
+          "order": 9
+        },
+        "codesprite.maxContextLines": {
+          "type": "number",
+          "default": 10,
+          "minimum": 4,
+          "maximum": 500,
+          "description": "Maximum number of lines of prefix and suffix context to send with each request. The actual number sent may be lower to respect maxInputTokens.",
+          "order": 10
+        },
+        "codesprite.streamEarlyStop": {
+          "type": "boolean",
+          "default": true,
+          "description": "When enabled, stop reading the SSE stream as soon as the provider signals completion ([DONE] or finish_reason), which can reduce tail latency.",
+          "order": 11
+        },
+        "codesprite.enabledLanguages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "*"
+          ],
+          "description": "List of VS Code language IDs where autocomplete is active. Use ['*'] to enable for all languages, or list specific IDs like ['python', 'javascript', 'typescript'].",
+          "order": 12
+        },
+        "codesprite.debounceDelay": {
+          "type": "number",
+          "default": 1000,
+          "minimum": 50,
+          "maximum": 2000,
+          "description": "Delay in milliseconds before sending an inline completion request after the user stops typing. Lower values are more responsive but increase API usage. Only applies to inline autocomplete.",
+          "order": 13
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "codesprite.toggle",
+        "title": "CodeSprite: Toggle Enable/Disable"
+      },
+      {
+        "command": "codesprite.aiCommand",
+        "title": "CodeSprite: AI Command"
+      },
+      {
+        "command": "codesprite.generateCommitMessage",
+        "title": "CodeSprite: Generate Commit Message",
+        "icon": "$(lightbulb-autofix)"
+      }
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "codesprite.generateCommitMessage",
+          "when": "config.codesprite.commitMessageEnabled && config.codesprite.enabled",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "codesprite.aiCommand",
+        "key": "ctrl+shift+i",
+        "mac": "cmd+shift+i",
+        "when": "editorTextFocus"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "node esbuild.config.mjs --production",
+    "build": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "package": "npm run vscode:prepublish && vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.21.0",
+    "typescript": "^5.4.0"
+  }
+}
