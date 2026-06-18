@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { getErrorMessage } from './errors';
 import { resetStatusBarToReady } from './statusBar';
 import { extractPromptContext } from './context';
-import { getExtensionConfig, isGloballyEnabled, isLanguageEnabled, isCommandEnabled } from './config';
+import { getExtensionConfig, isGloballyEnabled, isCommandLanguageEnabled, isCommandEnabled } from './config';
 import { fetchInstructionCompletion } from './api';
 import type { InstructionRequest } from './types';
 
@@ -174,7 +174,7 @@ export function registerAICommand(
         return;
       }
 
-      if (!isLanguageEnabled(editor.document.languageId)) {
+      if (!isCommandLanguageEnabled(editor.document.languageId)) {
         vscode.window.showWarningMessage(
           `CodeSprite is not enabled for language: ${editor.document.languageId}`
         );
@@ -222,9 +222,9 @@ export function registerAICommand(
       const promptContext = extractPromptContext(
         editor.document,
         position,
-        config.maxContextLines,
-        config.maxCompletionTokens,
-        config.maxInputTokens,
+        config.commandMaxContextLines,
+        config.commandMaxCompletionTokens,
+        config.commandMaxInputTokens,
       );
 
       // 5. Build the request
@@ -237,8 +237,8 @@ export function registerAICommand(
         prefix: promptContext.prefix,
         suffix: promptContext.suffix,
         languageId: promptContext.languageId,
-        maxTokens: config.maxCompletionTokens,
-        maxInputTokens: config.maxInputTokens,
+        maxTokens: config.commandMaxCompletionTokens,
+        maxInputTokens: config.commandMaxInputTokens,
         streamEarlyStop: config.streamEarlyStop,
       };
 

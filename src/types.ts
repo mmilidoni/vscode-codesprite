@@ -101,10 +101,28 @@ export interface ExtensionConfig {
   apiKey: string;
   apiBaseUrl: string;
   model: string;
-  enabledLanguages: string[];
+  /** Inline: enabled language IDs */
+  inlineEnabledLanguages: string[];
+  /** Inline: debounce delay in ms */
   debounceDelay: number;
-  maxContextLines: number;
-  maxCompletionTokens: number;
-  maxInputTokens: number;
+  /** Inline: max context lines around cursor */
+  inlineMaxContextLines: number;
+  /** Inline: max tokens the model may generate */
+  inlineMaxCompletionTokens: number;
+  /** Inline: max tokens for the prompt input */
+  inlineMaxInputTokens: number;
+  /** Command: enabled language IDs */
+  commandEnabledLanguages: string[];
+  /** Command: max context lines around cursor */
+  commandMaxContextLines: number;
+  /** Command: max tokens the model may generate */
+  commandMaxCompletionTokens: number;
+  /** Command: max tokens for the prompt input */
+  commandMaxInputTokens: number;
+  /** Shared: stop SSE stream early on completion */
   streamEarlyStop: boolean;
+  /** Commit: max tokens the model may generate */
+  commitMaxTokens: number;
+  /** Commit: max characters of git diff to send */
+  commitMaxDiffLength: number;
 }

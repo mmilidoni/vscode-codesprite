@@ -9,6 +9,8 @@ function cfg(): vscode.WorkspaceConfiguration {
 
 /**
  * Reads all extension settings and returns a typed config object.
+ * New per-feature keys are read first, with old shared keys as fallback
+ * for backward compatibility with existing user settings.
  */
 export function getExtensionConfig(): ExtensionConfig {
   const c = cfg();
@@ -20,21 +22,43 @@ export function getExtensionConfig(): ExtensionConfig {
     apiKey: c.get<string>('apiKey', ''),
     apiBaseUrl: c.get<string>('apiBaseUrl', 'https://api.opencode.ai/v1'),
     model: c.get<string>('model', 'gpt-4o-mini'),
-    enabledLanguages: c.get<string[]>('enabledLanguages', ['*']),
-    debounceDelay: c.get<number>('debounceDelay', 150),
-    maxContextLines: c.get<number>('maxContextLines', 60),
-    maxCompletionTokens: c.get<number>('maxCompletionTokens', 256),
-    maxInputTokens: c.get<number>('maxInputTokens', 3072),
+    // Inline-specific — fall back to old shared keys if new ones aren't set
+    inlineEnabledLanguages: c.get<string[]>('inlineEnabledLanguages') ?? c.get<string[]>('enabledLanguages', ['*']),
+    debounceDelay: c.get<number>('debounceDelay') ?? c.get<number>('inlineDebounceDelay', 1000),
+    inlineMaxContextLines: c.get<number>('inlineMaxContextLines') ?? c.get<number>('maxContextLines', 10),
+    inlineMaxCompletionTokens: c.get<number>('inlineMaxCompletionTokens') ?? c.get<number>('maxCompletionTokens', 3072),
+    inlineMaxInputTokens: c.get<number>('inlineMaxInputTokens') ?? c.get<number>('maxInputTokens', 3072),
+    // Command-specific — fall back to old shared keys if new ones aren't set
+    commandEnabledLanguages: c.get<string[]>('commandEnabledLanguages') ?? c.get<string[]>('enabledLanguages', ['*']),
+    commandMaxContextLines: c.get<number>('commandMaxContextLines') ?? c.get<number>('maxContextLines', 10),
+    commandMaxCompletionTokens: c.get<number>('commandMaxCompletionTokens') ?? c.get<number>('maxCompletionTokens', 3072),
+    commandMaxInputTokens: c.get<number>('commandMaxInputTokens') ?? c.get<number>('maxInputTokens', 3072),
+    // Shared
     streamEarlyStop: c.get<boolean>('streamEarlyStop', true),
+    // Commit
+    commitMaxTokens: c.get<number>('commitMaxTokens', 256),
+    commitMaxDiffLength: c.get<number>('commitMaxDiffLength', 8000),
   };
 }
 
 /**
- * Returns true if the given languageId is enabled by user settings.
+ * Returns true if the given languageId is enabled for inline completion.
  * The value ['*'] means "enabled for all languages".
  */
-export function isLanguageEnabled(languageId: string): boolean {
-  const languages = cfg().get<string[]>('enabledLanguages', ['*']);
+export function isInlineLanguageEnabled(languageId: string): boolean {
+  const languages = cfg().get<string[]>('inlineEnabledLanguages') ?? cfg().get<string[]>('enabledLanguages', ['*']);
+  if (languages.length === 1 && languages[0] === '*') {
+    return true;
+  }
+  return languages.includes(languageId);
+}
+
+/**
+ * Returns true if the given languageId is enabled for the AI Command modal.
+ * The value ['*'] means "enabled for all languages".
+ */
+export function isCommandLanguageEnabled(languageId: string): boolean {
+  const languages = cfg().get<string[]>('commandEnabledLanguages') ?? cfg().get<string[]>('enabledLanguages', ['*']);
   if (languages.length === 1 && languages[0] === '*') {
     return true;
   }

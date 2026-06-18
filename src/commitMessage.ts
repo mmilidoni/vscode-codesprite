@@ -122,10 +122,9 @@ export function registerCommitMessageCommand(
       const abortController = new AbortController();
       currentCommitAbort = abortController;
 
-      // 4. Truncate diff if too large (keep it under ~8000 chars for the prompt)
-      const MAX_DIFF_LENGTH = 8000;
-      const truncatedDiff = diff.length > MAX_DIFF_LENGTH
-        ? diff.slice(0, MAX_DIFF_LENGTH) + '\n... (diff truncated)'
+      // 4. Truncate diff if too large (keep it under user-configured limit)
+      const truncatedDiff = diff.length > config.commitMaxDiffLength
+        ? diff.slice(0, config.commitMaxDiffLength) + '\n... (diff truncated)'
         : diff;
 
       // 5. Call the API
@@ -139,7 +138,7 @@ export function registerCommitMessageCommand(
             apiBaseUrl: config.apiBaseUrl,
             model: config.model,
             diff: truncatedDiff,
-            maxTokens: 256,
+            maxTokens: config.commitMaxTokens,
             streamEarlyStop: config.streamEarlyStop,
           },
           abortController.signal

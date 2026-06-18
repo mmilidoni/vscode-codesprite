@@ -3,7 +3,7 @@ import { getErrorMessage } from './errors';
 import { resetStatusBarToReady } from './statusBar';
 import { delayWithCancellation } from './debounce';
 import { extractPromptContext } from './context';
-import { getExtensionConfig, isLanguageEnabled, isGloballyEnabled, isInlineEnabled } from './config';
+import { getExtensionConfig, isInlineLanguageEnabled, isGloballyEnabled, isInlineEnabled } from './config';
 import { fetchCompletion, dedupCompletion } from './api';
 import type { CompletionRequest } from './types';
 
@@ -36,7 +36,7 @@ export class AIInlineCompletionProvider implements vscode.InlineCompletionItemPr
     if (!isGloballyEnabled() || !isInlineEnabled()) {
       return undefined;
     }
-    if (!isLanguageEnabled(document.languageId)) {
+    if (!isInlineLanguageEnabled(document.languageId)) {
       return undefined;
     }
 
@@ -75,9 +75,9 @@ export class AIInlineCompletionProvider implements vscode.InlineCompletionItemPr
     const promptContext = extractPromptContext(
       document,
       position,
-      config.maxContextLines,
-      config.maxCompletionTokens,
-      config.maxInputTokens,
+      config.inlineMaxContextLines,
+      config.inlineMaxCompletionTokens,
+      config.inlineMaxInputTokens,
     );
     log('context extracted', tContextStart);
     console.log(`[CodeSprite]   prefix lines: ${promptContext.prefix.split('\n').length}, suffix lines: ${promptContext.suffix.split('\n').length}, est. tokens: ${promptContext.estimatedTokens}`);
@@ -91,8 +91,8 @@ export class AIInlineCompletionProvider implements vscode.InlineCompletionItemPr
       suffix: promptContext.suffix,
       languageId: promptContext.languageId,
       model: config.model,
-      maxTokens: config.maxCompletionTokens,
-      maxInputTokens: config.maxInputTokens,
+      maxTokens: config.inlineMaxCompletionTokens,
+      maxInputTokens: config.inlineMaxInputTokens,
       streamEarlyStop: config.streamEarlyStop,
     };
     log('request built', tBuildStart);
@@ -128,8 +128,8 @@ export class AIInlineCompletionProvider implements vscode.InlineCompletionItemPr
         if (response.finishReason === 'length') {
           console.log(
             `[CodeSprite] ⚠ The model was cut off before producing output (finishReason='length'). ` +
-            `Try increasing codesprite.maxCompletionTokens (current: ${config.maxCompletionTokens}) ` +
-            `or reducing codesprite.maxContextLines (current: ${config.maxContextLines}). ` +
+            `Try increasing codesprite.inlineMaxCompletionTokens (current: ${config.inlineMaxCompletionTokens}) ` +
+            `or reducing codesprite.inlineMaxContextLines (current: ${config.inlineMaxContextLines}). ` +
             `Prompt context was ~${promptContext.estimatedTokens} tokens.`
           );
         }
@@ -139,8 +139,8 @@ export class AIInlineCompletionProvider implements vscode.InlineCompletionItemPr
       if (response.finishReason === 'length') {
         console.log(
           `[CodeSprite] ⚠ Completion truncated (finishReason='length'). ` +
-          `The model ran out of tokens. Consider increasing codesprite.maxCompletionTokens ` +
-          `(current: ${config.maxCompletionTokens}) or reducing maxContextLines.`
+          `The model ran out of tokens. Consider increasing codesprite.inlineMaxCompletionTokens ` +
+          `(current: ${config.inlineMaxCompletionTokens}) or reducing inlineMaxContextLines.`
         );
       }
 

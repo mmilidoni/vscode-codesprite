@@ -4,8 +4,6 @@
 
 CodeSprite is a lightweight VS Code extension that adds three AI coding features without locking you into a specific provider. Point it at any OpenAI-compatible chat completions endpoint, supply your own API key, and pick any model your provider supports.
 
-![Demo](demo1.gif)
-
 - **Inline completions** — ghost-text suggestions appear as you type, in any language.
 - **AI Command modal** — trigger a natural-language instruction (`Ctrl+Shift+I`) and insert or replace code at the cursor.
 - **Commit message generator** — one click in the Source Control panel turns your staged diff into a Conventional Commit message.
@@ -50,6 +48,8 @@ Open Settings (`Ctrl+,`) and search for `codesprite`, or edit your `settings.jso
 | `codesprite.inlineEnabled` | boolean | `true` | Enable inline ghost-text completions while typing. |
 | `codesprite.commandEnabled` | boolean | `true` | Enable the AI Command modal (`Ctrl+Shift+I`). |
 | `codesprite.commitMessageEnabled` | boolean | `true` | Enable the commit message generator in Source Control. |
+| `codesprite.commitMaxTokens` | number | `256` | Max tokens the model may generate for a commit message (`16`–`4096`). |
+| `codesprite.commitMaxDiffLength` | number | `8000` | Max characters of the git diff sent to the model (`512`–`100000`). Larger diffs are truncated. |
 | `codesprite.apiKey` | string | `""` | **Required.** API key for your provider. Keep this secret. |
 | `codesprite.apiBaseUrl` | string | `https://opencode.ai/zen/v1` | Base URL for an OpenAI-compatible chat completions endpoint. |
 | `codesprite.model` | string | `minimax-m2.7` | Model identifier your provider supports (e.g. `gpt-4o-mini`, `gpt-4o`, `claude-3.5-sonnet`). |
@@ -86,11 +86,15 @@ CodeSprite works with any OpenAI-compatible endpoint. For example, to use OpenAI
 
 ### 1. Inline completions
 
+![Inline completion demo](demo-inline.gif)
+
 Just type. After the configured debounce delay, CodeSprite requests a completion and renders it as ghost text. Press `Tab` to accept. Suggestions are de-duplicated against the code that already follows your cursor, so you never get duplicate lines.
 
 If the status bar shows `$(warning) CS`, no API key is set. If it shows `$(error) CS`, the last request failed — hover for details.
 
 ### 2. AI Command modal
+
+![AI Command modal demo](demo-command.gif)
 
 Press `Ctrl+Shift+I` (macOS: `Cmd+Shift+I`) with a text editor focused. Type a natural-language instruction, for example:
 
@@ -104,6 +108,8 @@ Press `Ctrl+Shift+I` (macOS: `Cmd+Shift+I`) with a text editor focused. Type a n
 Inserted code is briefly highlighted so you can review it; the highlight clears on the next edit, cursor move, or after 5 seconds. Use `Ctrl+Z` to undo if it's not what you wanted.
 
 ### 3. Commit message generator
+
+![Commit message generator demo](demo-commit-message.gif)
 
 Open the Source Control panel (`Ctrl+Shift+G`). Click the sparkle/lightbulb icon in the SCM title bar. CodeSprite reads your staged changes (`git diff --cached`), falls back to unstaged changes if nothing is staged, and writes a Conventional Commit message into the SCM input box.
 
