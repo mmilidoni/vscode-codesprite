@@ -82,6 +82,8 @@ export interface InstructionRequest extends ApiCredentials {
 export interface CommitMessageRequest extends ApiCredentials {
   /** The git diff (staged or unstaged) to generate a message from */
   diff: string;
+  /** Current git branch name; empty string when unavailable (detached HEAD / git error) */
+  branch: string;
   /** Maximum tokens to generate */
   maxTokens: number;
   /** System prompt instructing the model how to format the commit message */

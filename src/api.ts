@@ -104,9 +104,15 @@ function buildInstructionMessages(
 function buildCommitMessages(
   request: CommitMessageRequest
 ): Array<{ role: string; content: string }> {
+  // Branch is dynamic data, so it lives in the user message (not the system prompt).
+  // Omitted entirely when the branch could not be determined (detached HEAD / error),
+  // so the prompt stays clean and the model is not fed a meaningless placeholder.
+  const branchPrefix = request.branch.length > 0
+    ? `Branch: ${request.branch}\n\n`
+    : '';
   return [
     { role: 'system', content: request.systemPrompt },
-    { role: 'user', content: `Diff:\n${request.diff}` },
+    { role: 'user', content: `${branchPrefix}Diff:\n${request.diff}` },
   ];
 }
 

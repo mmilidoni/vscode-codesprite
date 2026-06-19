@@ -43,6 +43,30 @@ function getStagedDiff(cwd: string): Promise<string> {
 }
 
 /**
+ * Returns the current git branch name via `git rev-parse --abbrev-ref HEAD`.
+ * Always resolves — never rejects — so branch lookup can never fail the
+ * commit-message flow. Resolves to an empty string when the branch cannot
+ * be determined (detached HEAD state, git error, or not a git repo).
+ */
+function getCurrentBranch(cwd: string): Promise<string> {
+  return new Promise((resolve) => {
+    execFile('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd }, (err, stdout) => {
+      if (err) {
+        resolve('');
+        return;
+      }
+      const branch = stdout.trim();
+      // `git rev-parse --abbrev-ref HEAD` prints "HEAD" in detached-HEAD state.
+      if (branch === 'HEAD' || branch.length === 0) {
+        resolve('');
+        return;
+      }
+      resolve(branch);
+    });
+  });
+}
+
+/**
  * Gets the working directory for the current workspace.
  */
 function getWorkspaceCwd(): string | undefined {
@@ -93,19 +117,20 @@ export function registerCommitMessageCommand(
         return;
       }
 
-      // 2. Get the staged diff
-      let diff: string;
-      try {
-        statusBarItem.text = '$(loading~spin) CS';
-        statusBarItem.tooltip = 'CodeSprite: Reading staged changes...';
+      // 2. Get the staged diff and current branch (independent git lookups)
+        let diff: string;
+        let branch: string;
+        try {
+          statusBarItem.text = '$(loading~spin) CS';
+          statusBarItem.tooltip = 'CodeSprite: Reading staged changes...';
 
-        diff = await getStagedDiff(cwd);
-      } catch (err: unknown) {
-        const message = getErrorMessage(err);
-        vscode.window.showErrorMessage(`CodeSprite: ${message}`);
-        resetStatusBarToReady(statusBarItem);
-        return;
-      }
+          [diff, branch] = await Promise.all([getStagedDiff(cwd), getCurrentBranch(cwd)]);
+        } catch (err: unknown) {
+          const message = getErrorMessage(err);
+          vscode.window.showErrorMessage(`CodeSprite: ${message}`);
+          resetStatusBarToReady(statusBarItem);
+          return;
+        }
 
       if (diff.trim().length === 0) {
         vscode.window.showInformationMessage(
@@ -138,6 +163,7 @@ export function registerCommitMessageCommand(
             apiBaseUrl: config.apiBaseUrl,
             model: config.model,
             diff: truncatedDiff,
+            branch,
             maxTokens: config.commitMaxTokens,
             streamEarlyStop: config.streamEarlyStop,
             systemPrompt: config.commitPrompt,
