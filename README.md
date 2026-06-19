@@ -10,80 +10,7 @@ CodeSprite is a lightweight VS Code extension that adds three AI coding features
 
 Built with TypeScript + esbuild. No runtime dependencies. MIT licensed.
 
-## Requirements
-
-- VS Code `^1.80.0`
-- Node 18+ (only needed for building from source)
-- An API key for an OpenAI-compatible chat completions endpoint
-
-## Installation
-
-### From the Marketplace
-
-Search for **CodeSprite** in the VS Code Extensions view (`Ctrl+Shift+X`) and install it.
-
-### From a `.vsix` package
-
-```bash
-code --install-extension codesprite-0.1.0.vsix
-```
-
-### From source
-
-```bash
-git clone https://github.com/mmilidoni/vscode-codesprite.git
-cd vscode-codesprite
-npm install
-npm run package      # produces a .vsix in the project root
-code --install-extension *.vsix
-```
-
-## Configuration
-
-Open Settings (`Ctrl+,`) and search for `codesprite`, or edit your `settings.json` directly.
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `codesprite.enabled` | boolean | `true` | Master switch for all AI features. Click the status bar item to toggle. |
-| `codesprite.inlineEnabled` | boolean | `true` | Enable inline ghost-text completions while typing. |
-| `codesprite.commandEnabled` | boolean | `true` | Enable the AI Command modal (`Ctrl+Shift+I`). |
-| `codesprite.commitMessageEnabled` | boolean | `true` | Enable the commit message generator in Source Control. |
-| `codesprite.commitMaxTokens` | number | `256` | Max tokens the model may generate for a commit message (`16`–`4096`). |
-| `codesprite.commitMaxDiffLength` | number | `8000` | Max characters of the git diff sent to the model (`512`–`100000`). Larger diffs are truncated. |
-| `codesprite.commitPrompt` | string | _see setting_ | Custom system prompt for commit message generation. The git diff is appended as the user message. Defaults to a conventional commits prompt with detailed formatting guidelines. |
-| `codesprite.apiKey` | string | `""` | **Required.** API key for your provider. Keep this secret. |
-| `codesprite.apiBaseUrl` | string | `https://opencode.ai/zen/v1` | Base URL for an OpenAI-compatible chat completions endpoint. |
-| `codesprite.model` | string | `minimax-m2.7` | Model identifier your provider supports (e.g. `gpt-4o-mini`, `gpt-4o`, `claude-3.5-sonnet`). |
-| `codesprite.maxCompletionTokens` | number | `3072` | Max tokens the model may generate per request (`16`–`4096`). |
-| `codesprite.maxInputTokens` | number | `3072` | Max tokens for the prompt (prefix + suffix + system message). Context is trimmed to fit (`256`–`32768`). |
-| `codesprite.maxContextLines` | number | `10` | Max prefix/suffix lines sent per request. May be lowered to respect `maxInputTokens` (`4`–`500`). |
-| `codesprite.streamEarlyStop` | boolean | `true` | Stop reading the SSE stream as soon as completion is signaled, reducing tail latency. |
-| `codesprite.enabledLanguages` | string[] | `["*"]` | Language IDs where autocomplete is active. Use `["*"]` for all, or list specific IDs like `["python", "typescript"]`. |
-| `codesprite.debounceDelay` | number | `1000` | Milliseconds to wait after typing stops before requesting an inline completion (`50`–`2000`). Lower = more responsive, higher API usage. Inline only. |
-
-### Minimal example (`settings.json`)
-
-```jsonc
-{
-  "codesprite.apiKey": "sk-your-key-here",
-  "codesprite.apiBaseUrl": "https://opencode.ai/zen/v1",
-  "codesprite.model": "minimax-m2.7"
-}
-```
-
-### Using a different provider
-
-CodeSprite works with any OpenAI-compatible endpoint. For example, to use OpenAI directly:
-
-```jsonc
-{
-  "codesprite.apiKey": "sk-...",
-  "codesprite.apiBaseUrl": "https://api.openai.com/v1",
-  "codesprite.model": "gpt-4o-mini"
-}
-```
-
-## Usage
+## Features
 
 ### 1. Inline completions
 
@@ -116,6 +43,23 @@ Open the Source Control panel (`Ctrl+Shift+G`). Click the sparkle/lightbulb icon
 
 The commit message prompt extracts a user-story number from the branch name when it follows the `1234-description` pattern, prefixing the message with `[1234]`.
 
+## Quick start
+
+Requires VS Code `^1.80.0` and an API key for an OpenAI-compatible chat completions endpoint.
+
+1. **Install** — search for **CodeSprite** in the Extensions view (`Ctrl+Shift+X`).
+2. **Configure** — open Settings (`Ctrl+,`), search for `codesprite`, and set at least:
+   ```jsonc
+   {
+     "codesprite.apiKey": "sk-your-key-here",
+     "codesprite.apiBaseUrl": "https://opencode.ai/zen/v1",
+     "codesprite.model": "minimax-m2.7"
+   }
+   ```
+3. **Use it** — just type for inline completions, press `Ctrl+Shift+I` for the AI Command modal, or click the sparkle icon in the Source Control panel to generate a commit message.
+
+Click the `CS` indicator in the status bar to toggle all features on/off at once.
+
 ### Status bar
 
 A `CS` indicator in the bottom-left status bar reflects the current state:
@@ -128,7 +72,60 @@ A `CS` indicator in the bottom-left status bar reflects the current state:
 | `$(warning) CS` | No API key configured |
 | `$(error) CS` | Last request failed (hover for the error) |
 
-Click the indicator to toggle the master switch on/off.
+---
+
+## Configuration
+
+Open Settings (`Ctrl+,`) and search for `codesprite`, or edit your `settings.json` directly.
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `codesprite.enabled` | boolean | `true` | Master switch for all AI features. Click the status bar item to toggle. |
+| `codesprite.inlineEnabled` | boolean | `true` | Enable inline ghost-text completions while typing. |
+| `codesprite.commandEnabled` | boolean | `true` | Enable the AI Command modal (`Ctrl+Shift+I`). |
+| `codesprite.commitMessageEnabled` | boolean | `true` | Enable the commit message generator in Source Control. |
+| `codesprite.commitMaxTokens` | number | `256` | Max tokens the model may generate for a commit message (`16`–`4096`). |
+| `codesprite.commitMaxDiffLength` | number | `8000` | Max characters of the git diff sent to the model (`512`–`100000`). Larger diffs are truncated. |
+| `codesprite.commitPrompt` | string | _see setting_ | Custom system prompt for commit message generation. The git diff is appended as the user message. Defaults to a conventional commits prompt with detailed formatting guidelines. |
+| `codesprite.apiKey` | string | `""` | **Required.** API key for your provider. Keep this secret. |
+| `codesprite.apiBaseUrl` | string | `https://opencode.ai/zen/v1` | Base URL for an OpenAI-compatible chat completions endpoint. |
+| `codesprite.model` | string | `minimax-m2.7` | Model identifier your provider supports (e.g. `gpt-4o-mini`, `gpt-4o`, `claude-3.5-sonnet`). |
+| `codesprite.maxCompletionTokens` | number | `3072` | Max tokens the model may generate per request (`16`–`4096`). |
+| `codesprite.maxInputTokens` | number | `3072` | Max tokens for the prompt (prefix + suffix + system message). Context is trimmed to fit (`256`–`32768`). |
+| `codesprite.maxContextLines` | number | `10` | Max prefix/suffix lines sent per request. May be lowered to respect `maxInputTokens` (`4`–`500`). |
+| `codesprite.streamEarlyStop` | boolean | `true` | Stop reading the SSE stream as soon as completion is signaled, reducing tail latency. |
+| `codesprite.enabledLanguages` | string[] | `["*"]` | Language IDs where autocomplete is active. Use `["*"]` for all, or list specific IDs like `["python", "typescript"]`. |
+| `codesprite.debounceDelay` | number | `1000` | Milliseconds to wait after typing stops before requesting an inline completion (`50`–`2000`). Lower = more responsive, higher API usage. Inline only. |
+
+### Using a different provider
+
+CodeSprite works with any OpenAI-compatible endpoint. For example, to use OpenAI directly:
+
+```jsonc
+{
+  "codesprite.apiKey": "sk-...",
+  "codesprite.apiBaseUrl": "https://api.openai.com/v1",
+  "codesprite.model": "gpt-4o-mini"
+}
+```
+
+## Installation
+
+### From a `.vsix` package
+
+```bash
+code --install-extension codesprite-0.1.0.vsix
+```
+
+### From source
+
+```bash
+git clone https://github.com/mmilidoni/vscode-codesprite.git
+cd vscode-codesprite
+npm install
+npm run package      # produces a .vsix in the project root
+code --install-extension *.vsix
+```
 
 ## Build from source
 
@@ -171,4 +168,4 @@ CodeSprite sends the code around your cursor (prefix + suffix, trimmed to your c
 
 ## License
 
-[MIT](./LICENSE) © publisher
+[MIT](./LICENSE) © mmilidoni
