@@ -50,6 +50,7 @@ Open Settings (`Ctrl+,`) and search for `codesprite`, or edit your `settings.jso
 | `codesprite.commitMessageEnabled` | boolean | `true` | Enable the commit message generator in Source Control. |
 | `codesprite.commitMaxTokens` | number | `256` | Max tokens the model may generate for a commit message (`16`–`4096`). |
 | `codesprite.commitMaxDiffLength` | number | `8000` | Max characters of the git diff sent to the model (`512`–`100000`). Larger diffs are truncated. |
+| `codesprite.commitPrompt` | string | _see setting_ | Custom system prompt for commit message generation. The git diff is appended as the user message. Defaults to a conventional commits prompt with detailed formatting guidelines. |
 | `codesprite.apiKey` | string | `""` | **Required.** API key for your provider. Keep this secret. |
 | `codesprite.apiBaseUrl` | string | `https://opencode.ai/zen/v1` | Base URL for an OpenAI-compatible chat completions endpoint. |
 | `codesprite.model` | string | `minimax-m2.7` | Model identifier your provider supports (e.g. `gpt-4o-mini`, `gpt-4o`, `claude-3.5-sonnet`). |

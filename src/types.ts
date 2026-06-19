@@ -84,6 +84,8 @@ export interface CommitMessageRequest extends ApiCredentials {
   diff: string;
   /** Maximum tokens to generate */
   maxTokens: number;
+  /** System prompt instructing the model how to format the commit message */
+  systemPrompt: string;
 }
 
 /**
@@ -125,4 +127,6 @@ export interface ExtensionConfig {
   commitMaxTokens: number;
   /** Commit: max characters of git diff to send */
   commitMaxDiffLength: number;
+  /** Commit: custom system prompt for commit message generation */
+  commitPrompt: string;
 }

@@ -59,11 +59,6 @@ const SYSTEM_PROMPT_INSTRUCTION =
 const SYSTEM_PROMPT_INSTRUCTION_SELECTION =
   'You are a code assistant. The user has selected code or comments and given an instruction. Replace the entire selection with your output. Output ONLY the replacement source code. No explanations, no markdown fences, no comments.';
 
-// Commit message: Conventional Commits, imperative mood, ≤72 char subject.
-const SYSTEM_PROMPT_COMMIT =
-//  'Generate a git commit message from the provided diff. Format: type(scope): description (Conventional Commits). Valid types: feat, fix, refactor, docs, test, chore, style, perf, build, ci. Scope is optional. Subject ≤150 chars, imperative mood ("add" not "added"). Add a blank line and a short body only when the change complexity warrants explanation. Output ONLY the commit message — no markdown, no quotes, no extra text.';
-"Generate a git commit message from the provided diff. Use conventional commit message format. Prefix the message with the user story number in square brackets. Take the user story number from the branch name, which follows the format '1234-description'. For example, if the branch name is '1234-add-login', the commit message should start with '[1234]'"
-
 function buildMessages(
   request: CompletionRequest
 ): Array<{ role: string; content: string }> {
@@ -110,7 +105,7 @@ function buildCommitMessages(
   request: CommitMessageRequest
 ): Array<{ role: string; content: string }> {
   return [
-    { role: 'system', content: SYSTEM_PROMPT_COMMIT },
+    { role: 'system', content: request.systemPrompt },
     { role: 'user', content: `Diff:\n${request.diff}` },
   ];
 }

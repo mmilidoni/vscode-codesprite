@@ -188,6 +188,13 @@
             "maximum": 100000,
             "description": "Maximum characters of the git diff to send to the model. Diffs exceeding this are truncated (512–100000).",
             "order": 3
+          },
+          "codesprite.commitPrompt": {
+            "type": "string",
+            "default": "You are an expert developer writing a git commit message. You will be given a git diff. Analyze the changes and produce a commit message that follows the Conventional Commits specification (https://www.conventionalcommits.org/).\n\nThe message structure should be:\n\n<type>[optional scope]: <short description>\n\n[optional body]\n\nGuidelines:\n- Use one of the standard types: feat, fix, chore, docs, style, refactor, perf, test, ci, build, revert.\n- Write the short description in the imperative mood (e.g., \"add feature\" not \"added feature\"), no capital first letter, no trailing period.\n- If the diff introduces a breaking change, append a ! after the type/scope\n- If the diff contains multiple distinct logical changes, use a blank line after the summary and list each change as a bullet point in the body.\n- Keep the subject line under 72 characters if possible.\n- Output only the commit message, without quotes, backticks, or any extra commentary.",
+            "description": "Custom system prompt for commit message generation. The git diff is automatically appended as the user message.",
+            "order": 4,
+            "editPresentation": "multilineText"
           }
         }
       }

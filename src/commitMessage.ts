@@ -140,6 +140,7 @@ export function registerCommitMessageCommand(
             diff: truncatedDiff,
             maxTokens: config.commitMaxTokens,
             streamEarlyStop: config.streamEarlyStop,
+            systemPrompt: config.commitPrompt,
           },
           abortController.signal
         );

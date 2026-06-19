@@ -38,6 +38,21 @@ export function getExtensionConfig(): ExtensionConfig {
     // Commit
     commitMaxTokens: c.get<number>('commitMaxTokens', 256),
     commitMaxDiffLength: c.get<number>('commitMaxDiffLength', 8000),
+    commitPrompt: c.get<string>('commitPrompt', `You are an expert developer writing a git commit message. You will be given a git diff. Analyze the changes and produce a commit message that follows the Conventional Commits specification (https://www.conventionalcommits.org/).
+
+The message structure should be:
+
+<type>[optional scope]: <short description>
+
+[optional body]
+
+Guidelines:
+- Use one of the standard types: feat, fix, chore, docs, style, refactor, perf, test, ci, build, revert.
+- Write the short description in the imperative mood (e.g., "add feature" not "added feature"), no capital first letter, no trailing period.
+- If the diff introduces a breaking change, append a ! after the type/scope
+- If the diff contains multiple distinct logical changes, use a blank line after the summary and list each change as a bullet point in the body.
+- Keep the subject line under 72 characters if possible.
+- Output only the commit message, without quotes, backticks, or any extra commentary.`),
   };
 }
 
