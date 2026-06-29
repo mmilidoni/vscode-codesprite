@@ -20,7 +20,7 @@ export function getExtensionConfig(): ExtensionConfig {
     commandEnabled: c.get<boolean>('commandEnabled', true),
     commitMessageEnabled: c.get<boolean>('commitMessageEnabled', true),
     apiKey: c.get<string>('apiKey', ''),
-    apiBaseUrl: c.get<string>('apiBaseUrl', 'https://api.opencode.ai/v1'),
+    apiBaseUrl: c.get<string>('apiBaseUrl', 'https://opencode.ai/zen/v1'),
     model: c.get<string>('model', 'gpt-4o-mini'),
     // Inline-specific — fall back to old shared keys if new ones aren't set
     inlineEnabledLanguages: c.get<string[]>('inlineEnabledLanguages') ?? c.get<string[]>('enabledLanguages', ['*']),

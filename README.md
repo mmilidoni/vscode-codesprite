@@ -2,6 +2,8 @@
 
 > AI ghost text for VS Code. Inline completions, AI commands, and commit messages — bring your own key, open-source.
 
+> ⚠️ **CodeSprite is an early prototype**. Have an idea, found a bug, or want to contribute? Head over to [GitHub](https://github.com/mmilidoni/vscode-codesprite) and open an issue or PR. Feedback welcome.
+
 CodeSprite is a lightweight VS Code extension that adds three AI coding features without locking you into a specific provider. Point it at any OpenAI-compatible chat completions endpoint, supply your own API key, and pick any model your provider supports.
 
 - **Inline completions** — ghost-text suggestions appear as you type, in any language.
