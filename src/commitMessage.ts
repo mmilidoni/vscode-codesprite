@@ -4,6 +4,7 @@ import { resetStatusBarToReady } from './statusBar';
 import { execFile } from 'child_process';
 import { getExtensionConfig, isGloballyEnabled, isCommitMessageEnabled } from './config';
 import { fetchCommitMessage } from './api';
+import { getProviderSpec } from './providers';
 
 /**
  * Module-level AbortController for cancelling a previous in-flight request.
@@ -167,6 +168,8 @@ export function registerCommitMessageCommand(
             maxTokens: config.commitMaxTokens,
             streamEarlyStop: config.streamEarlyStop,
             systemPrompt: config.commitPrompt,
+            provider: getProviderSpec(config.provider),
+            contextWindow: config.contextWindow,
           },
           abortController.signal
         );

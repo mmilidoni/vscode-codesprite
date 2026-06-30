@@ -4,7 +4,7 @@
 
 > ⚠️ **CodeSprite is an early prototype**. Have an idea, found a bug, or want to contribute? Head over to [GitHub](https://github.com/mmilidoni/vscode-codesprite) and open an issue or PR. Feedback welcome.
 
-CodeSprite is a lightweight VS Code extension that adds three AI coding features without locking you into a specific provider. Point it at any OpenAI-compatible chat completions endpoint, supply your own API key, and pick any model your provider supports.
+CodeSprite is a lightweight VS Code extension that adds three AI coding features without locking you into a specific provider. Choose your preferred AI provider from the built-in presets or bring any OpenAI-compatible endpoint.
 
 - **Inline completions** — ghost-text suggestions appear as you type, in any language.
 - **AI Command modal** — trigger a natural-language instruction (`Ctrl+Shift+I`) and insert or replace code at the cursor.
@@ -47,16 +47,17 @@ The commit message prompt extracts a user-story number from the branch name when
 
 ## Quick start
 
-Requires VS Code `^1.80.0` and an API key for an OpenAI-compatible chat completions endpoint.
+Requires VS Code `^1.80.0` and an API key for your chosen AI provider.
 
 1. **Install** — search for **CodeSprite** in the Extensions view (`Ctrl+Shift+X`).
 2. **Configure** — open Settings (`Ctrl+,`), search for `codesprite`, and set at least:
    ```jsonc
    {
-     "codesprite.apiKey": "sk-your-key-here",
-     "codesprite.apiBaseUrl": "https://opencode.ai/zen/v1",
-     "codesprite.model": "minimax-m2.7"
-   }
+      "codesprite.provider": "openai",   // or: anthropic, gemini, mistral, xai, custom
+      "codesprite.apiKey": "sk-your-key-here",
+      // apiBaseUrl and model are optional — the 'openai' preset defaults to
+      // https://opencode.ai/zen/v1 with minimax-m2.7. Other presets use their own defaults.
+    }
    ```
 3. **Use it** — just type for inline completions, press `Ctrl+Shift+I` for the AI Command modal, or click the sparkle icon in the Source Control panel to generate a commit message.
 
@@ -89,25 +90,66 @@ Open Settings (`Ctrl+,`) and search for `codesprite`, or edit your `settings.jso
 | `codesprite.commitMaxTokens` | number | `256` | Max tokens the model may generate for a commit message (`16`–`4096`). |
 | `codesprite.commitMaxDiffLength` | number | `8000` | Max characters of the git diff sent to the model (`512`–`100000`). Larger diffs are truncated. |
 | `codesprite.commitPrompt` | string | _see setting_ | Custom system prompt for commit message generation. The git diff is appended as the user message. Defaults to a conventional commits prompt with detailed formatting guidelines. |
-| `codesprite.apiKey` | string | `""` | **Required.** API key for your provider. Keep this secret. |
-| `codesprite.apiBaseUrl` | string | `https://opencode.ai/zen/v1` | Base URL for an OpenAI-compatible chat completions endpoint. |
-| `codesprite.model` | string | `minimax-m2.7` | Model identifier your provider supports (e.g. `gpt-4o-mini`, `gpt-4o`, `claude-3.5-sonnet`). |
-| `codesprite.maxCompletionTokens` | number | `3072` | Max tokens the model may generate per request (`16`–`4096`). |
-| `codesprite.maxInputTokens` | number | `3072` | Max tokens for the prompt (prefix + suffix + system message). Context is trimmed to fit (`256`–`32768`). |
-| `codesprite.maxContextLines` | number | `10` | Max prefix/suffix lines sent per request. May be lowered to respect `maxInputTokens` (`4`–`500`). |
+| `codesprite.provider` | enum | `"openai"` | AI provider preset. Built-in: `openai`, `anthropic`, `gemini`, `mistral`, `xai`. Use `custom` for any OpenAI-compatible endpoint (OpenRouter, Together, Ollama, etc.). |
+| `codesprite.apiKey` | string | `""` | **Required.** API key for your selected provider. Keep this secret. |
+| `codesprite.apiBaseUrl` | string | `""` | Base URL for the API endpoint. Leave empty to use the provider's default (e.g. `https://api.openai.com/v1`). |
+| `codesprite.model` | string | `""` | Model identifier (e.g. `gpt-4o`, `claude-3-5-sonnet-20241022`). Leave empty to use the provider's recommended default. |
 | `codesprite.streamEarlyStop` | boolean | `true` | Stop reading the SSE stream as soon as completion is signaled, reducing tail latency. |
-| `codesprite.enabledLanguages` | string[] | `["*"]` | Language IDs where autocomplete is active. Use `["*"]` for all, or list specific IDs like `["python", "typescript"]`. |
-| `codesprite.debounceDelay` | number | `1000` | Milliseconds to wait after typing stops before requesting an inline completion (`50`–`2000`). Lower = more responsive, higher API usage. Inline only. |
+| `codesprite.inlineDebounceDelay` | number | `1000` | Milliseconds to wait after typing stops before requesting an inline completion (`50`–`2000`). Lower = more responsive, higher API usage. Inline only. |
+| `codesprite.inlineEnabledLanguages` | string[] | `["*"]` | Language IDs where inline autocomplete is active. Use `["*"]` for all, or list specific IDs like `["python", "typescript"]`. |
+| `codesprite.commandEnabledLanguages` | string[] | `["*"]` | Language IDs where the AI Command modal is active. |
 
-### Using a different provider
+## Providers
 
-CodeSprite works with any OpenAI-compatible endpoint. For example, to use OpenAI directly:
+CodeSprite ships with built-in presets for the major hosted AI providers. Set `codesprite.provider` to pick one. The extension automatically uses the correct API endpoint, authentication method, request format, and context window for each provider.
+
+| Provider | Setting | Default model | Context window | Auth method |
+|----------|---------|---------------|----------------|-------------|
+| OpenAI | `openai` | `minimax-m2.7` * | 128 000 | `Authorization: Bearer` |
+| Anthropic | `anthropic` | `claude-3-5-sonnet-20241022` | 200 000 | `x-api-key` header |
+| Google Gemini | `gemini` | `gemini-1.5-pro` | 2 000 000 | `?key=` query param |
+| Mistral | `mistral` | `codestral-latest` | 32 000 | `Authorization: Bearer` |
+| xAI (Grok) | `xai` | `grok-2-mini` | 131 072 | `Authorization: Bearer` |
+| Custom (OpenAI-compat) | `custom` | `gpt-4o-mini` | 128 000 | `Authorization: Bearer` |
+
+**Leave `apiBaseUrl` and `model` empty** to use the provider defaults. Override them to point at a different endpoint or model.
+
+> \* The `openai` preset defaults to `https://opencode.ai/zen/v1` (the opencode.ai BYOK service) with model `minimax-m2.7`. To use literal OpenAI, set `apiBaseUrl` to `https://api.openai.com/v1` and `model` to `gpt-4o` or `gpt-4o-mini`.
+
+### Custom provider
+
+Use `"codesprite.provider": "custom"` for any OpenAI-compatible endpoint — OpenRouter, Together, Groq, Ollama, LM Studio, OpenCode, or self-hosted. The `custom` preset uses the standard OpenAI chat completions format (`/chat/completions`, Bearer auth, SSE streaming). Just set `apiBaseUrl` and `model` to match your endpoint.
+
+### Example: Gemini setup
 
 ```jsonc
 {
-  "codesprite.apiKey": "sk-...",
-  "codesprite.apiBaseUrl": "https://api.openai.com/v1",
-  "codesprite.model": "gpt-4o-mini"
+  "codesprite.provider": "gemini",
+  "codesprite.apiKey": "AIza..."
+  // apiBaseUrl and model are optional — defaults are used
+}
+```
+
+> **Note:** Gemini sends the API key as a URL query parameter (`?key=...`), not as an HTTP header. If you're behind a proxy that logs query strings, consider using a VPN or a different provider.
+
+### Example: Anthropic setup
+
+```jsonc
+{
+  "codesprite.provider": "anthropic",
+  "codesprite.apiKey": "sk-ant-..."
+  // system prompt is sent as a top-level field, not in the messages array
+}
+```
+
+### Example: Ollama (local)
+
+```jsonc
+{
+  "codesprite.provider": "custom",
+  "codesprite.apiBaseUrl": "http://localhost:11434/v1",
+  "codesprite.apiKey": "ollama",  // Ollama ignores the key but requires a non-empty value
+  "codesprite.model": "codellama:7b"
 }
 ```
 
@@ -150,8 +192,9 @@ Single entrypoint: `src/extension.ts` → `activate()` wires up the three featur
 
 | Module | Role |
 |--------|------|
-| `api.ts` | All HTTP calls. `_fetchAiCompletion()` is the single shared pipeline; three thin public wrappers configure it. |
+| `api.ts` | All HTTP calls. `_fetchAiCompletion()` is the single shared pipeline; dispatches on provider protocol for URL, headers, body, SSE, and JSON parsing. |
 | `config.ts` | Reads VS Code settings, feature toggles, language filtering. |
+| `providers.ts` | Provider preset catalog — default URLs, models, context windows, and protocol identifiers for each provider. |
 | `context.ts` | Extracts prefix/suffix around the cursor with token-budget trimming. |
 | `tokens.ts` | Char-based token estimation (~4 chars/token) and budget clamping. |
 | `debounce.ts` | Cancellable delay for inline typing debounce. |

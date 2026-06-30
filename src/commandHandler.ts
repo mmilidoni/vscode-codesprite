@@ -4,6 +4,7 @@ import { resetStatusBarToReady } from './statusBar';
 import { extractPromptContext } from './context';
 import { getExtensionConfig, isGloballyEnabled, isCommandLanguageEnabled, isCommandEnabled } from './config';
 import { fetchInstructionCompletion } from './api';
+import { getProviderSpec } from './providers';
 import type { InstructionRequest } from './types';
 
 /**
@@ -240,6 +241,8 @@ export function registerAICommand(
         maxTokens: config.commandMaxCompletionTokens,
         maxInputTokens: config.commandMaxInputTokens,
         streamEarlyStop: config.streamEarlyStop,
+        provider: getProviderSpec(config.provider),
+        contextWindow: config.contextWindow,
       };
 
       // 6. Call the API

@@ -1,5 +1,5 @@
-import type { CompletionRequest, CompletionResponse, InstructionRequest, CommitMessageRequest } from './types';
-import { estimateTokens, computeMaxInputTokens, DEFAULT_MODEL_CONTEXT_WINDOW } from './tokens';
+import type { CompletionRequest, CompletionResponse, InstructionRequest, CommitMessageRequest, ProviderSpec, Protocol } from './types';
+import { estimateTokens, computeMaxInputTokens } from './tokens';
 
 /**
  * System prompts — concise and unambiguous.
@@ -169,16 +169,220 @@ export function dedupCompletion(completion: string, suffix: string): string {
   return completion;
 }
 
+// ── Protocol-specific response parsers ──
+
+/** A parsed SSE event from any provider. Null means skip (non-content event). */
+type ParsedEvent = { delta?: string; finishReason?: string } | null;
+
+/** A parsed JSON response (non-streaming fallback) from any provider. */
+type ParsedJSON = { text: string; finishReason: string };
+
+// ── OpenAI / OpenAI-compatible (Mistral, xAI, custom) ──
+
+function parseOpenAIEvent(dataStr: string): ParsedEvent {
+  try {
+    const chunk = JSON.parse(dataStr) as {
+      choices?: Array<{
+        delta?: { content?: string };
+        finish_reason?: string | null;
+      }>;
+    };
+    const choice = chunk.choices?.[0];
+    if (!choice) return null;
+    const result: { delta?: string; finishReason?: string } = {};
+    if (choice.delta?.content) result.delta = choice.delta.content;
+    if (choice.finish_reason) result.finishReason = choice.finish_reason;
+    return (result.delta || result.finishReason) ? result : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseOpenAIJSON(raw: string): ParsedJSON {
+  const parsed = JSON.parse(raw) as {
+    choices?: Array<{
+      message?: { content?: string };
+      finish_reason?: string;
+    }>;
+  };
+  const choice = parsed.choices?.[0];
+  if (!choice) throw new Error('No completion choices returned from API');
+  return {
+    text: (choice.message?.content ?? '').trim(),
+    finishReason: choice.finish_reason ?? 'unknown',
+  };
+}
+
+// ── Anthropic ──
+
+function mapAnthropicStopReason(reason: string | undefined): string {
+  switch (reason) {
+    case 'end_turn': return 'stop';
+    case 'max_tokens': return 'length';
+    case 'tool_use': return 'tool_calls';
+    default: return reason ?? 'unknown';
+  }
+}
+
+function parseAnthropicEvent(dataStr: string): ParsedEvent {
+  try {
+    const chunk = JSON.parse(dataStr) as {
+      type?: string;
+      delta?: { type?: string; text?: string; stop_reason?: string };
+    };
+    switch (chunk.type) {
+      case 'content_block_delta': {
+        if (chunk.delta?.type === 'text_delta' && chunk.delta.text) {
+          return { delta: chunk.delta.text };
+        }
+        return null;
+      }
+      case 'message_delta': {
+        if (chunk.delta?.stop_reason) {
+          return { finishReason: mapAnthropicStopReason(chunk.delta.stop_reason) };
+        }
+        return null;
+      }
+      default:
+        return null; // message_start, content_block_{start,stop}, ping, etc.
+    }
+  } catch {
+    return null;
+  }
+}
+
+function parseAnthropicJSON(raw: string): ParsedJSON {
+  const parsed = JSON.parse(raw) as {
+    content?: Array<{ type?: string; text?: string }>;
+    stop_reason?: string;
+  };
+  const textBlock = parsed.content?.find(c => c.type === 'text');
+  return {
+    text: (textBlock?.text ?? '').trim(),
+    finishReason: mapAnthropicStopReason(parsed.stop_reason),
+  };
+}
+
+function buildAnthropicBody(
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  maxTokens: number,
+  temperature: number,
+): Record<string, unknown> {
+  const systemMsg = messages.find(m => m.role === 'system');
+  const chatMessages = messages.filter(m => m.role !== 'system');
+
+  const body: Record<string, unknown> = {
+    model,
+    messages: chatMessages,
+    max_tokens: maxTokens,
+    stream: true,
+  };
+  if (systemMsg) {
+    body.system = systemMsg.content;
+  }
+  if (temperature > 0) {
+    body.temperature = temperature;
+  }
+  return body;
+}
+
+// ── Google Gemini ──
+
+function mapGeminiFinishReason(reason: string | undefined): string {
+  switch (reason) {
+    case 'STOP': return 'stop';
+    case 'MAX_TOKENS': return 'length';
+    case 'SAFETY': return 'content_filter';
+    case 'RECITATION': return 'content_filter';
+    default: return reason ?? 'unknown';
+  }
+}
+
+function parseGeminiEvent(dataStr: string): ParsedEvent {
+  try {
+    const chunk = JSON.parse(dataStr) as {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+        finishReason?: string;
+      }>;
+    };
+    const candidate = chunk.candidates?.[0];
+    if (!candidate) return null;
+    const result: { delta?: string; finishReason?: string } = {};
+    if (candidate.content?.parts) {
+      const text = candidate.content.parts.map(p => p.text ?? '').join('');
+      if (text) result.delta = text;
+    }
+    if (candidate.finishReason) result.finishReason = mapGeminiFinishReason(candidate.finishReason);
+    return (result.delta || result.finishReason) ? result : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseGeminiJSON(raw: string): ParsedJSON {
+  const parsed = JSON.parse(raw) as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+      finishReason?: string;
+    }>;
+  };
+  const candidate = parsed.candidates?.[0];
+  if (!candidate) throw new Error('No candidates returned from Gemini API');
+  const text = candidate.content?.parts?.map(p => p.text ?? '').join('') ?? '';
+  return {
+    text: text.trim(),
+    finishReason: mapGeminiFinishReason(candidate.finishReason),
+  };
+}
+
+function buildGeminiBody(
+  _model: string,
+  messages: Array<{ role: string; content: string }>,
+  maxTokens: number,
+  temperature: number,
+): Record<string, unknown> {
+  const systemMsg = messages.find(m => m.role === 'system');
+  const chatMessages = messages.filter(m => m.role !== 'system');
+
+  // Map roles: user → user, assistant → model
+  const contents = chatMessages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+
+  const body: Record<string, unknown> = {
+    generationConfig: {
+      maxOutputTokens: maxTokens,
+      temperature,
+    },
+  };
+  if (contents.length > 0) {
+    body.contents = contents;
+  }
+  if (systemMsg) {
+    body.systemInstruction = { parts: [{ text: systemMsg.content }] };
+  }
+  return body;
+}
+
+// ── Generic SSE stream parser ──
+
 /**
- * Parses a streaming SSE (Server-Sent Events) response body.
- * Concatenates content deltas into the final completion text.
+ * Reads a streaming SSE response body and parses events using a protocol-specific
+ * parseEvent callback. Concatenates content deltas into the final text.
+ *
+ * @param parseEvent - given the `data:` payload string, returns the delta and/or
+ *                     finish reason. Returns null for events that carry no content
+ *                     (e.g. message_start, ping, etc.).
  */
 async function parseSSEStream(
   body: ReadableStream<Uint8Array>,
   signal: AbortSignal,
-  earlyStop: boolean
+  earlyStop: boolean,
+  parseEvent: (data: string) => ParsedEvent,
 ): Promise<{ text: string; finishReason: string }> {
-
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let fullText = '';
@@ -194,28 +398,19 @@ async function parseSSEStream(
       return;
     }
 
-    try {
-      const chunk = JSON.parse(dataStr) as {
-        choices?: Array<{
-          delta?: { content?: string };
-          finish_reason?: string | null;
-        }>;
-      };
-      const delta = chunk.choices?.[0]?.delta?.content;
-      if (delta) {
-        fullText += delta;
-        if (!firstTokenLogged) {
-          firstTokenLogged = true;
-          console.log(`[CodeSprite]   TTFT (first content token): ${(performance.now() - tStreamStart).toFixed(1)}ms`);
-        }
+    const parsed = parseEvent(dataStr);
+    if (!parsed) return;
+
+    if (parsed.delta) {
+      fullText += parsed.delta;
+      if (!firstTokenLogged) {
+        firstTokenLogged = true;
+        console.log(`[CodeSprite]   TTFT (first content token): ${(performance.now() - tStreamStart).toFixed(1)}ms`);
       }
-      const reason = chunk.choices?.[0]?.finish_reason;
-      if (reason) {
-        finishReason = reason;
-        protocolDone = true;
-      }
-    } catch {
-      // Skip malformed SSE chunks (some providers send comments)
+    }
+    if (parsed.finishReason) {
+      finishReason = parsed.finishReason;
+      protocolDone = true;
     }
   };
 
@@ -263,8 +458,6 @@ async function parseSSEStream(
       processBufferLines();
 
       if (protocolDone && earlyStop) {
-        // Some providers send [DONE] / finish_reason but keep socket open briefly.
-        // Stop reading immediately to avoid post-completion latency.
         await reader.cancel();
         break;
       }
@@ -280,6 +473,8 @@ async function parseSSEStream(
   return { text: fullText, finishReason };
 }
 
+// ── Shared pipeline ──
+
 /**
  * Parameters that vary between the three public API functions.
  * Used by the shared internal pipeline _fetchAiCompletion().
@@ -287,7 +482,7 @@ async function parseSSEStream(
 interface AiCompletionParams {
   /** Pre-built messages array (system + user) */
   messages: Array<{ role: string; content: string }>;
-  /** API key for Bearer auth */
+  /** API key for auth */
   apiKey: string;
   /** Base URL for the chat completions endpoint */
   apiBaseUrl: string;
@@ -314,18 +509,18 @@ interface AiCompletionParams {
   logResponse: boolean;
   /** Whether to include maxTokens in the prompt log output */
   logMaxTokensInPrompt: boolean;
+  /** Provider preset that determines protocol, auth, and parsing */
+  provider: ProviderSpec;
+  /** Model context window for prompt budget clamping */
+  contextWindow: number;
 }
 
 /**
  * Shared pipeline for all AI completion requests.
  *
- * Strategy for response parsing:
- *  - We always send `stream: true` so the server should respond with SSE.
- *  - We check the Content-Type header first:
- *      • text/event-stream → parse as SSE stream (memory-efficient)
- *      • application/json  → parse as a single JSON object
- *  - If the response isn't a recognized type we attempt SSE, falling back
- *    to JSON on parse failure.  This handles servers that omit Content-Type.
+ * Dispatches on provider.protocol to construct the correct URL, headers,
+ * request body, SSE event parser, and JSON response parser for each provider.
+ * All three protocols share the same fetch → error → parse flow.
  */
 async function _fetchAiCompletion(
   params: AiCompletionParams,
@@ -335,6 +530,7 @@ async function _fetchAiCompletion(
     messages, apiKey, apiBaseUrl, model, maxTokens, temperature,
     streamEarlyStop, logPrefix, clampTokens, stripMarkdown,
     logTiming, logResponse, logMaxTokensInPrompt,
+    provider, contextWindow,
   } = params;
 
   // --- Optional timing setup ---
@@ -352,7 +548,7 @@ async function _fetchAiCompletion(
     effectiveMaxTokens = maxTokens;
   } else {
     const promptTokens = estimateTokens(JSON.stringify(messages));
-    const maxCompletable = computeMaxInputTokens(DEFAULT_MODEL_CONTEXT_WINDOW, 0) - promptTokens;
+    const maxCompletable = computeMaxInputTokens(contextWindow, 0) - promptTokens;
     effectiveMaxTokens = Math.min(maxTokens, Math.max(maxCompletable, 16));
 
     if (clampTokens === 'verbose') {
@@ -372,31 +568,64 @@ async function _fetchAiCompletion(
     }
   }
 
+  // --- Protocol dispatch: URL, headers, body, parsers ---
+  const protocol = provider.protocol;
+
+  let url: string;
+  let headers: Record<string, string>;
+  let body: Record<string, unknown>;
+  let parseEventFn: (data: string) => ParsedEvent;
+  let parseJSONFn: (raw: string) => ParsedJSON;
+
+  switch (protocol) {
+    case 'openai': {
+      url = `${apiBaseUrl}/chat/completions`;
+      headers = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      };
+      body = { model, messages, max_tokens: effectiveMaxTokens, temperature, stream: true };
+      parseEventFn = parseOpenAIEvent;
+      parseJSONFn = parseOpenAIJSON;
+      break;
+    }
+    case 'anthropic': {
+      url = `${apiBaseUrl}/v1/messages`;
+      headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      };
+      body = buildAnthropicBody(model, messages, effectiveMaxTokens, temperature);
+      parseEventFn = parseAnthropicEvent;
+      parseJSONFn = parseAnthropicJSON;
+      break;
+    }
+    case 'gemini': {
+      const encodedKey = encodeURIComponent(apiKey);
+      url = `${apiBaseUrl}/models/${model}:streamGenerateContent?alt=sse&key=${encodedKey}`;
+      headers = { 'Content-Type': 'application/json' };
+      body = buildGeminiBody(model, messages, effectiveMaxTokens, temperature);
+      parseEventFn = parseGeminiEvent;
+      parseJSONFn = parseGeminiJSON;
+      break;
+    }
+  }
+
   // --- Log the prompt ---
-  const logData: Record<string, unknown> = { model, messages };
+  const logData: Record<string, unknown> = { model, messages, provider: provider.id };
   if (logMaxTokensInPrompt) {
     logData.maxTokens = effectiveMaxTokens;
   }
   console.log(`[CodeSprite] ${logPrefix} prompt sent to model:`, logData);
 
-  // --- Build request body ---
-  const body = {
-    model,
-    messages,
-    max_tokens: effectiveMaxTokens,
-    temperature,
-    stream: true,
-  };
   if (logTiming) log('build messages & body', tBuild);
 
   // --- Fetch ---
   const tFetch = logTiming ? performance.now() : 0;
-  const response = await fetch(`${apiBaseUrl}/chat/completions`, {
+  const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers,
     body: JSON.stringify(body),
     signal,
   });
@@ -427,7 +656,7 @@ async function _fetchAiCompletion(
   // --- SSE streaming path ---
   if (isSSE && response.body) {
     const tSSE = logTiming ? performance.now() : 0;
-    const { text, finishReason } = await parseSSEStream(response.body, signal, streamEarlyStop);
+    const { text, finishReason } = await parseSSEStream(response.body, signal, streamEarlyStop, parseEventFn);
     if (logTiming) log('SSE stream complete', tSSE);
     const result = stripMarkdown ? stripMarkdownFences(text.trim()) : text.trim();
     return { text: result, finishReason };
@@ -449,67 +678,22 @@ async function _fetchAiCompletion(
       if (!trimmed || !trimmed.startsWith('data:')) continue;
       const dataStr = trimmed.slice(5).trim();
       if (dataStr === '[DONE]') continue;
-      try {
-        const chunk = JSON.parse(dataStr) as {
-          choices?: Array<{
-            delta?: { content?: string };
-            finish_reason?: string | null;
-          }>;
-        };
-        const delta = chunk.choices?.[0]?.delta?.content;
-        if (delta) {
-          fullText += delta;
-        }
-        const reason = chunk.choices?.[0]?.finish_reason;
-        if (reason) {
-          finishReason = reason;
-        }
-      } catch {
-        // Skip malformed chunks
-      }
+      const parsed = parseEventFn(dataStr);
+      if (!parsed) continue;
+      if (parsed.delta) fullText += parsed.delta;
+      if (parsed.finishReason) finishReason = parsed.finishReason;
     }
 
     const result = stripMarkdown ? stripMarkdownFences(fullText.trim()) : fullText.trim();
     return { text: result, finishReason };
   }
 
-  // --- Standard JSON response ---
-  let data: unknown;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    throw new Error(
-      `AI API returned non-JSON response (Content-Type: ${contentType || 'unknown'}): ${raw.slice(0, 200)}`
-    );
-  }
-
-  const parsed = data as {
-    choices?: Array<{
-      message?: { content?: string };
-      finish_reason?: string;
-    }>;
-  };
-
-  const choice = parsed.choices?.[0];
-  if (!choice) {
-    throw new Error('No completion choices returned from API');
-  }
-
-  const rawText = (choice.message?.content ?? '').trim();
-  const result = stripMarkdown ? stripMarkdownFences(rawText) : rawText;
-  return { text: result, finishReason: choice.finish_reason ?? 'unknown' };
+  // --- Standard JSON response (protocol-specific parser) ---
+  return parseJSONFn(raw);
 }
 
 /**
  * Sends a completion request to the API.
- *
- * Strategy for response parsing:
- *  - We always send `stream: true` so the server should respond with SSE.
- *  - We check the Content-Type header first:
- *      • text/event-stream → parse as SSE stream (memory-efficient)
- *      • application/json  → parse as a single JSON object
- *  - If the response isn't a recognized type we attempt SSE, falling back
- *    to JSON on parse failure.  This handles servers that omit Content-Type.
  */
 export async function fetchCompletion(
   request: CompletionRequest,
@@ -529,13 +713,13 @@ export async function fetchCompletion(
     logTiming: true,
     logResponse: false,
     logMaxTokensInPrompt: true,
+    provider: request.provider,
+    contextWindow: request.contextWindow,
   }, signal);
 }
 
 /**
  * Sends an instruction-based completion request to the API.
- * Uses the same HTTP + streaming + JSON fallback logic as fetchCompletion,
- * but with a different prompt construction tailored for natural-language instructions.
  */
 export async function fetchInstructionCompletion(
   request: InstructionRequest,
@@ -555,12 +739,13 @@ export async function fetchInstructionCompletion(
     logTiming: false,
     logResponse: false,
     logMaxTokensInPrompt: false,
+    provider: request.provider,
+    contextWindow: request.contextWindow,
   }, signal);
 }
 
 /**
  * Sends a commit message generation request to the API.
- * Takes a git diff and returns a suggested commit message.
  */
 export async function fetchCommitMessage(
   request: CommitMessageRequest,
@@ -580,5 +765,7 @@ export async function fetchCommitMessage(
     logTiming: false,
     logResponse: true,
     logMaxTokensInPrompt: false,
+    provider: request.provider,
+    contextWindow: request.contextWindow,
   }, signal);
 }

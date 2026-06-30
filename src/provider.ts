@@ -5,6 +5,7 @@ import { delayWithCancellation } from './debounce';
 import { extractPromptContext } from './context';
 import { getExtensionConfig, isInlineLanguageEnabled, isGloballyEnabled, isInlineEnabled } from './config';
 import { fetchCompletion, dedupCompletion } from './api';
+import { getProviderSpec } from './providers';
 import type { CompletionRequest } from './types';
 
 /**
@@ -94,6 +95,8 @@ export class AIInlineCompletionProvider implements vscode.InlineCompletionItemPr
       maxTokens: config.inlineMaxCompletionTokens,
       maxInputTokens: config.inlineMaxInputTokens,
       streamEarlyStop: config.streamEarlyStop,
+      provider: getProviderSpec(config.provider),
+      contextWindow: config.contextWindow,
     };
     log('request built', tBuildStart);
 

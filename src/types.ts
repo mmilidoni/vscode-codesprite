@@ -1,3 +1,20 @@
+// ── Provider types (shared by providers.ts) ──
+
+export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'mistral' | 'xai' | 'custom';
+
+export type Protocol = 'openai' | 'anthropic' | 'gemini';
+
+export interface ProviderSpec {
+  id: ProviderId;
+  label: string;
+  protocol: Protocol;
+  defaultBaseUrl: string;
+  defaultModel: string;
+  contextWindow: number;
+}
+
+// ── Editor context ──
+
 /**
  * Data collected from the editor before making an API request.
  */
@@ -25,6 +42,10 @@ export interface ApiCredentials {
   model: string;
   /** Stop reading stream immediately when completion is done */
   streamEarlyStop: boolean;
+  /** Provider preset that determines the API protocol, auth, and response parsing */
+  provider: ProviderSpec;
+  /** Model context window in tokens (used for prompt budget clamping) */
+  contextWindow: number;
 }
 
 /**
@@ -131,4 +152,10 @@ export interface ExtensionConfig {
   commitMaxDiffLength: number;
   /** Commit: custom system prompt for commit message generation */
   commitPrompt: string;
-}
+  /** Selected provider preset */
+  provider: ProviderId;
+  /** Model context window in tokens from the active provider preset */
+  contextWindow: number;
+  /** Provider default model (used when model is not explicitly set) */
+  defaultModel: string;
+} 

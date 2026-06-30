@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import type { ExtensionConfig } from './types';
+import type { ExtensionConfig, ProviderId } from './types';
+import { getProviderSpec } from './providers';
 
 const SECTION = 'codesprite';
 
@@ -14,14 +15,32 @@ function cfg(): vscode.WorkspaceConfiguration {
  */
 export function getExtensionConfig(): ExtensionConfig {
   const c = cfg();
+
+  const providerId = c.get<string>('provider', 'openai') as ProviderId;
+  const spec = getProviderSpec(providerId);
+
+  // Resolve apiBaseUrl: explicit setting wins, otherwise provider default.
+  let apiBaseUrl = c.get<string>('apiBaseUrl', '');
+  if (!apiBaseUrl) {
+    apiBaseUrl = spec.defaultBaseUrl;
+  }
+  // Strip trailing slash to avoid double-slash in URL paths (e.g. /v1/chat/completions).
+  apiBaseUrl = apiBaseUrl.replace(/\/+$/, '');
+
+  // Resolve model: explicit setting wins, otherwise provider default.
+  const model = c.get<string>('model') || spec.defaultModel;
+
   return {
     enabled: c.get<boolean>('enabled', true),
     inlineEnabled: c.get<boolean>('inlineEnabled', true),
     commandEnabled: c.get<boolean>('commandEnabled', true),
     commitMessageEnabled: c.get<boolean>('commitMessageEnabled', true),
     apiKey: c.get<string>('apiKey', ''),
-    apiBaseUrl: c.get<string>('apiBaseUrl', 'https://opencode.ai/zen/v1'),
-    model: c.get<string>('model', 'gpt-4o-mini'),
+    apiBaseUrl,
+    model,
+    provider: providerId,
+    contextWindow: spec.contextWindow,
+    defaultModel: spec.defaultModel,
     // Inline-specific — fall back to old shared keys if new ones aren't set
     inlineEnabledLanguages: c.get<string[]>('inlineEnabledLanguages') ?? c.get<string[]>('enabledLanguages', ['*']),
     debounceDelay: c.get<number>('debounceDelay') ?? c.get<number>('inlineDebounceDelay', 1000),

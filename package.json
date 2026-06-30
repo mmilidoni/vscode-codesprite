@@ -2,7 +2,7 @@
   "name": "codesprite",
   "displayName": "CodeSprite",
   "description": "CodeSprite: AI ghost text for VS Code. Inline completions, AI commands & commit messages — BYOK, open-source.",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "icon": "icon.png",
   "publisher": "mmilidoni",
   "uuid": "8fdbd3f5-0451-4dbf-a273-cd3045c153c0",
@@ -45,26 +45,40 @@
           "codesprite.apiKey": {
             "type": "string",
             "default": "",
-            "description": "API key for the OpenCode service. Keep this value secret.",
+            "description": "API key for your selected provider. Keep this value secret.",
+            "order": 3
+          },
+          "codesprite.provider": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "anthropic",
+              "gemini",
+              "mistral",
+              "xai",
+              "custom"
+            ],
+            "default": "openai",
+            "description": "AI provider preset. Determines the API endpoint, authentication method, request format, and default model. Use 'custom' for any OpenAI-compatible endpoint (OpenRouter, Together, Ollama, etc.).",
             "order": 2
           },
           "codesprite.apiBaseUrl": {
             "type": "string",
-            "default": "https://opencode.ai/zen/v1",
-            "description": "Base URL for the OpenCode (OpenAI-compatible) chat completions endpoint.",
-            "order": 3
+            "default": "",
+            "markdownDescription": "Default URL depends on the active `#codesprite.provider#`.\n\n| Provider | Default URL |\n|---|---|\n| `openai` | `https://opencode.ai/zen/v1` |\n| `anthropic` | `https://api.anthropic.com` |\n| `gemini` | `https://generativelanguage.googleapis.com/v1beta` |\n| `mistral` | `https://api.mistral.ai/v1` |\n| `xai` | `https://api.x.ai/v1` |\n| `custom` | `https://api.openai.com/v1` |\n\nLeave empty to use the default for the selected provider.",
+            "order": 4
           },
           "codesprite.model": {
             "type": "string",
-            "default": "minimax-m2.7",
-            "description": "Model identifier to use for completions (e.g. 'gpt-4o-mini', 'gpt-4o', 'claude-3.5-sonnet'). Enter any model ID your API provider supports.",
-            "order": 4
+            "default": "",
+            "markdownDescription": "Default model depends on the active `#codesprite.provider#`.\n\n| Provider | Default model |\n|---|---|\n| `openai` | `minimax-m2.7` |\n| `anthropic` | `claude-3-5-sonnet-20241022` |\n| `gemini` | `gemini-1.5-pro` |\n| `mistral` | `codestral-latest` |\n| `xai` | `grok-2-mini` |\n| `custom` | `gpt-4o-mini` |\n\nLeave empty to use the provider's recommended default.",
+            "order": 5
           },
           "codesprite.streamEarlyStop": {
             "type": "boolean",
             "default": true,
             "description": "When enabled, stop reading the SSE stream as soon as the provider signals completion ([DONE] or finish_reason), which can reduce tail latency.",
-            "order": 5
+            "order": 6
           }
         }
       },

@@ -10,9 +10,6 @@
 /** Rough estimate: 4 characters per token on average for source code. */
 const CHARS_PER_TOKEN = 4;
 
-/** Default model context window. Most small/medium models use 4096. */
-export const DEFAULT_MODEL_CONTEXT_WINDOW = 4096;
-
 /**
  * Safety margin subtracted from the model's context window to account for:
  *  - System prompt tokens (~20-50)
