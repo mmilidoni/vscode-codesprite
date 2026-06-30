@@ -49,3 +49,14 @@ Shared infrastructure:
 - **`.vscodeignore` strips everything except `dist/extension.js` and `package.json`**: source files, config, and lockfile don't ship in the .vsix.
 - **Node 18 target** in esbuild. VS Code ^1.80.0 engine. Don't use Node 20+ APIs.
 - **No duplicated code**: this codebase was aggressively de-duplicated. `_fetchAiCompletion()` in `api.ts` is the single shared HTTP pipeline — add new API call patterns as config on that pipeline, never copy the fetch/SFF/JSON logic. `getErrorMessage()` and `resetStatusBarToReady()` are the canonical utilities; never inline `err instanceof Error` or `'$(sparkle) AI'`.
+- **Provider defaults are dual-source**: the runtime source of truth is `PROVIDERS` in `src/providers.ts`. The Settings UI source of truth is the `markdownDescription` tables on `codesprite.apiBaseUrl` and `codesprite.model` in `package.json`. When adding or changing a provider default, update **both**.
+
+## Release workflow
+
+1. Edit `CHANGELOG.md`: move `[Unreleased]` content into a new
+   `## [<version>] - YYYY-MM-DD` section, leave `[Unreleased]` heading
+   with no content.
+2. Bump `package.json` `version` to match.
+3. Commit changelog + version bump: `chore(release): <version>`.
+4. `npm run package` to produce the `.vsix`.
+5. Publish: `vsce publish` or upload the `.vsix` to the marketplace.
